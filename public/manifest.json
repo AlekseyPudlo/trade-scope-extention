@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Trade Scope Extension",
+  "version": "0.1.0",
+  "description": "Chrome extension scaffold for Trade Scope.",
+  "action": {
+    "default_title": "Trade Scope",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [],
+  "host_permissions": [],
+  "minimum_chrome_version": "114"
+}
