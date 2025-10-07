@@ -4,14 +4,16 @@
   "version": "0.1.0",
   "description": "Chrome extension scaffold for Trade Scope.",
   "action": {
-    "default_title": "Trade Scope",
-    "default_popup": "popup.html"
+    "default_title": "Trade Scope"
   },
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background.ts",
     "type": "module"
   },
-  "permissions": [],
+  "permissions": ["sidePanel"],
   "host_permissions": [],
+  "side_panel": {
+    "default_path": "src/sidepanel.html"
+  },
   "minimum_chrome_version": "114"
 }
