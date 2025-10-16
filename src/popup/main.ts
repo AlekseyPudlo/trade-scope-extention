@@ -10,10 +10,6 @@ import {
   type TradeInput,
 } from '../lib/tradeCalc.js';
 
-if (window.innerWidth < 720 || window.innerHeight < 520) {
-  window.resizeTo(720, 520);
-}
-
 type RiskMode = 'risk_cash' | 'risk_percent' | 'notional';
 
 interface StopSettings {
@@ -1136,70 +1132,138 @@ const renderResults = (rows: ResultRow[]) => {
     return;
   }
 
-  const header = `
-    <thead>
-      <tr>
-        <th>Direction</th>
-        <th>Setup</th>
-        <th>Stop type</th>
-        <th>Level</th>
-        <th>Stop (pts)</th>
-        <th>Buffer</th>
-        <th>TVX</th>
-        <th>SL</th>
-        <th>TP</th>
-        <th>RR</th>
-        <th>ATR/Stop</th>
-        <th>Range/Stop</th>
-        <th>>=4 stops?</th>
-        <th>Stop <= 0.2*ATR?</th>
-        <th>Qty</th>
-        <th>Notional</th>
-      </tr>
-    </thead>
-  `;
+  type MetricDefinition = {
+    label: string;
+    getValue: (row: ResultRow) => string;
+  };
 
-  const bodyRows = rows
+  const metrics: MetricDefinition[] = [
+    {
+      label: 'Direction',
+      getValue: (row) =>
+        row.response
+          ? capitalize(row.response.result.direction)
+          : capitalize(formState.direction),
+    },
+    {
+      label: 'Setup',
+      getValue: (row) => SETUP_LABELS[row.setup],
+    },
+    {
+      label: 'Stop type',
+      getValue: (row) => STOP_LABELS[row.stopType],
+    },
+    {
+      label: 'Level',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.level, 2) : '—',
+    },
+    {
+      label: 'Stop (pts)',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.stop, 4) : '—',
+    },
+    {
+      label: 'Buffer',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.buffer, 4) : '—',
+    },
+    {
+      label: 'TVX',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.tvx, 4) : '—',
+    },
+    {
+      label: 'SL',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.slPrice, 4) : '—',
+    },
+    {
+      label: 'TP',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.tpPrice, 4) : '—',
+    },
+    {
+      label: 'RR',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.rrMultiple, 2) : '—',
+    },
+    {
+      label: 'ATR/Stop',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.atrOverStop, 2) : '—',
+    },
+    {
+      label: 'Range/Stop',
+      getValue: (row) => {
+        if (!row.response) return '—';
+        const ratio = row.response.result.rangeOverStop;
+        return ratio === RANGE_UNKNOWN ? RANGE_UNKNOWN : formatNumber(ratio, 2);
+      },
+    },
+    {
+      label: '>=4 stops?',
+      getValue: (row) =>
+        row.response ? toBadge(row.response.result.hasFourStops) : '—',
+    },
+    {
+      label: 'Stop <= 0.2*ATR?',
+      getValue: (row) =>
+        row.response ? toBadge(row.response.result.stopWithinAtrFilter) : '—',
+    },
+    {
+      label: 'Qty',
+      getValue: (row) =>
+        row.response ? formatInteger(row.response.result.quantity) : '—',
+    },
+    {
+      label: 'Notional',
+      getValue: (row) =>
+        row.response ? formatNumber(row.response.result.notional, 2) : '—',
+    },
+    {
+      label: 'Status',
+      getValue: (row) =>
+        row.response
+          ? '<span class="badge yes">OK</span>'
+          : `<span class="muted">${row.error ?? 'No result'}</span>`,
+    },
+  ];
+
+  const cards = rows
     .map((row) => {
-      if (!row.response) {
-        return `
-          <tr>
-            <td>${capitalize(formState.direction)}</td>
-            <td>${SETUP_LABELS[row.setup]}</td>
-            <td>${STOP_LABELS[row.stopType]}</td>
-            <td colspan="13" class="muted">${row.error ?? 'No result'}</td>
-          </tr>
-        `;
-      }
-      const result = row.response.result;
-      const rangeValue =
-        result.rangeOverStop === RANGE_UNKNOWN
-          ? RANGE_UNKNOWN
-          : formatNumber(result.rangeOverStop, 2);
+      const directionLabel = row.response
+        ? capitalize(row.response.result.direction)
+        : capitalize(formState.direction);
+      const headerLabel = `${SETUP_LABELS[row.setup]} · ${STOP_LABELS[row.stopType]}`;
+      const metricRows = metrics
+        .map(
+          (metric) => `
+            <tr>
+              <th scope="row">${metric.label}</th>
+              <td>${metric.getValue(row)}</td>
+            </tr>
+          `.trim()
+        )
+        .join('');
+
       return `
-        <tr>
-          <td>${capitalize(result.direction)}</td>
-          <td>${SETUP_LABELS[row.setup]}</td>
-          <td>${STOP_LABELS[row.stopType]}</td>
-          <td>${formatNumber(result.level, 2)}</td>
-          <td>${formatNumber(result.stop, 4)}</td>
-          <td>${formatNumber(result.buffer, 4)}</td>
-          <td>${formatNumber(result.tvx, 4)}</td>
-          <td>${formatNumber(result.slPrice, 4)}</td>
-          <td>${formatNumber(result.tpPrice, 4)}</td>
-          <td>${formatNumber(result.rrMultiple, 2)}</td>
-          <td>${formatNumber(result.atrOverStop, 2)}</td>
-          <td>${rangeValue}</td>
-          <td>${toBadge(result.hasFourStops)}</td>
-          <td>${toBadge(result.stopWithinAtrFilter)}</td>
-          <td>${formatInteger(result.quantity)}</td>
-          <td>${formatNumber(result.notional, 2)}</td>
-        </tr>
-      `;
+        <article class="result-card">
+          <header class="result-card__header">
+            <span class="result-card__title">${directionLabel}</span>
+            <span class="result-card__subtitle">${headerLabel}</span>
+          </header>
+          <table class="result-card__table">
+            <tbody>
+              ${metricRows}
+            </tbody>
+          </table>
+        </article>
+      `.trim();
     })
     .join('');
 
-  resultsContainer.innerHTML = `<table>${header}<tbody>${bodyRows}</tbody></table>`;
+  resultsContainer.innerHTML = `<div class="results-grid">${cards}</div>`;
 };
 
 const renderWarnings = (rows: ResultRow[]) => {
